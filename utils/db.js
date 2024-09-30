@@ -1,30 +1,50 @@
-import dotenv from 'dotenv';
-import { mongoClient } from 'mongodb'
+import { MongoClient } from 'mongodb'
 
 class DBClient {
 	constructor() {
 		const host = process.env.DB_HOST || 'localhost';
 		const port = process.env.DB_PORT || 'port';
-		const data_base = process.env.DB_DATABASE || 'files_manager';
+		const database = process.env.DB_DATABASE || 'files_manager';
 		const url = `mongodb://${host}:${port}`;
-
-		this.client = new mongoClient(url, { useUnifieldTopology: true });
-		this.database = this.client.db(database);
-		this.client.connect().catch((err) => {
-			console.log('Failed to connect to Mongodb server', err);
-		});
+		this.client = new MongoClient(url, { useUnifiedTopology: true });
+		this.client.connect()
+			.then(() => {
+				this.database = this.client.db(database);
+				console.log('Successfully connected to MongoDB server');
+			})
+			.catch((err) => {
+				console.log('Failed to connect to MongoDB server', err);
+			});
 	};
-	isAlive(){
-		return this.client && this.client.isconnected();
+
+	/**
+	 * Check if the database client is connected and alive.
+	 * @returns {boolean} True if the client is connected and alive, false otherwise.
+	 */
+	isAlive() {
+		return this.client && this.client.isConnected();
 	}
-    async nbUsers() {
-	const users_collection = this.database.collection('users');
-	return users_collection.countDocuments();
+
+	/**
+	 * Asynchronously retrieves the total number of users from the 'users' collection in the database.
+	 * @returns {Promise<number>} A promise that resolves to the total number of users in the collection.
+	 */  /**
+* Returns the number of documents in the 'users' collection
+* @return {Promise<number>} the number of documents in the users collection
+*/
+	async nbUsers() {
+		return this.database.collection('users').countDocuments();
+	}
+
+	/**
+	 * Returns the number of documents in the 'files' collection
+	 * @return {Promise<number>} the number of documents in the files collection
+	 */
+	async nbFiles() {
+		return this.database.collection('files').countDocuments();
+	}
 }
-    async nbFiles() {
-	const files_collection = this.database.collection('files');
-	return files_collection.countDocuments();
-}
-}
-const dbclient = new DBClient();
-module.exports = dbclient;
+
+// Create and export an instance of DBClient
+const dbClient = new DBClient();
+export default dbClient;
