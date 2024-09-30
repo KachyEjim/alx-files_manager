@@ -36,6 +36,42 @@ class Userscontroller {
 	    return res.status(500).json({error: 'Internal server error'});
 	}
     }
+    
+    // definining GET /users/me
+    static async getMe(req, res) {
+    const token = req.headers['x-token'];
+
+    // Check for token in the header
+    if (!token) {
+	res.status(401).json({ error: 'Unauthorized' });
+    }
+    // Check if the token exists in Redis
+    const tokenKey = `auth_${token}`;
+    const userId = await redisClient.get(tokenKey);
+
+    if (!userId) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+    try {
+        // Retrieve the user from MongoDB based on userId
+        const usersCollection = dbClient.database.collection('users');
+	const user = await usersCollection.findOne({ _id: new dbClient.ObjectID(userId) });
+
+        if (!user) {
+	    return res.status(401).json({ error: 'Unauthorized' });
+      }
+
+      // Return user info (email and id only)
+      return res.status(200).json({
+	      id: user._id,
+	      email: user.email,
+      });
+    } catch (err) {
+        console.error(`Error retrieving user: ${err.message}`);
+	return res.status(500).json({ error: 'Internal Server Error' });
+    }
+  }
+}
 }
 
 module.exports = Userscontroller;
