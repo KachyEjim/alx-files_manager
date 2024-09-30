@@ -1,6 +1,8 @@
 import redis from 'redis';
 import { promisify } from 'util';
+import dotenv from 'dotenv';
 
+dotenv.config();
 /**
  * Class for performing operations with Redis service
  */

@@ -1,4 +1,18 @@
 import { MongoClient } from 'mongodb'
+import dotenv from 'dotenv';
+
+dotenv.config();
+
+/**
+ * Check if the database client is connected and alive.
+ * @returns {boolean} True if the client is connected and alive, false otherwise.
+ *
+ * Returns the number of documents in the 'users' collection
+ * @return {Promise<number>} the number of documents in the users collection
+ *
+ * Returns the number of documents in the 'files' collection
+ * @return {Promise<number>} the number of documents in the files collection
+ */
 
 class DBClient {
 	constructor() {
