@@ -125,8 +125,8 @@ class FilesController {
     }
 
     const result = await fileUtils.getFile({
-      _id: ObjectId(fileId),
-      userId: ObjectId(userId),
+      _id: new ObjectId(fileId),
+      userId: new ObjectId(userId),
     });
 
     if (!result) return response.status(404).send({ error: 'Not found' });
@@ -173,10 +173,10 @@ class FilesController {
     if (parentId !== 0 && parentId !== '0') {
       if (!basicUtils.isValidId(parentId)) { return response.status(401).send({ error: 'Unauthorized' }); }
 
-      parentId = ObjectId(parentId);
+      parentId = new ObjectId(parentId);
 
       const folder = await fileUtils.getFile({
-        _id: ObjectId(parentId),
+        _id: parentId,
       });
 
       if (!folder || folder.type !== 'folder') { return response.status(200).send([]); }
