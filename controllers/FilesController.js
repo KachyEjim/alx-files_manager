@@ -4,6 +4,7 @@ import Queue from 'bull';
 import userUtils from '../utils/user';
 import fileUtils from '../utils/file';
 import basicUtils from '../utils/basic';
+import dbClient from '../utils/db';
 
 const FOLDER_PATH = process.env.FOLDER_PATH || '/tmp/files_manager';
 
@@ -114,9 +115,14 @@ class FilesController {
     });
 
     if (!user) return response.status(401).send({ error: 'Unauthorized' });
+    const objectId = new ObjectId(fileId);
 
-    // Mongo Condition for Id
-    if (!basicUtils.isValidId(fileId) || !basicUtils.isValidId(userId)) { return response.status(404).send({ error: 'Not found' }); }
+    const file = await dbClient.filesCollection.findOne({ _id: objectId, userId });
+
+    if (!file) {
+      // If no file is found, return a 404 error
+      return request.status(404).json({ error: 'File not found' });
+    }
 
     const result = await fileUtils.getFile({
       _id: ObjectId(fileId),
@@ -125,9 +131,9 @@ class FilesController {
 
     if (!result) return response.status(404).send({ error: 'Not found' });
 
-    const file = fileUtils.processFile(result);
+    const fileOut = fileUtils.processFile(result);
 
-    return response.status(200).send(file);
+    return response.status(200).send(fileOut);
   }
 
   /**
