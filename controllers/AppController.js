@@ -1,6 +1,5 @@
-import redisClient from '../utils/redis.js';
-import dbClient from '../utils/db.js';
-
+import redisClient from '../utils/redis';
+import dbClient from '../utils/db';
 
 /**
  * Class representing the application controller.
@@ -8,10 +7,9 @@ import dbClient from '../utils/db.js';
  */
 class AppController {
   // GET /status
-
   /**
  * Retrieves the status of the Redis and database clients.
- * 
+ *
  * @param {Object} request - The request object.
  * @param {Object} response - The response object.
  */
@@ -25,9 +23,9 @@ class AppController {
 
   // GET /stats
   /**
-   * Retrieves the statistics of the number of users 
+   * Retrieves the statistics of the number of users
    * and files from the database.
-   * 
+   *
    * @param {Object} req - The request object.
    * @param {Object} res - The response object.
    * @returns {Object} The number of users and files in the database.
