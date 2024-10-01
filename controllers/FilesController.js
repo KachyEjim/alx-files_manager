@@ -111,7 +111,7 @@ class FilesController {
     const { userId } = await userUtils.getUserIdAndKey(request);
 
     const user = await userUtils.getUser({
-      _id: ObjectId(userId),
+      _id: new ObjectId(userId),
     });
 
     if (!user) return response.status(401).send({ error: 'Unauthorized' });
@@ -121,7 +121,7 @@ class FilesController {
 
     if (!file) {
       // If no file is found, return a 404 error
-      return request.status(404).json({ error: 'File not found' });
+      return response.status(404).json({ error: 'File not found' });
     }
 
     const result = await fileUtils.getFile({

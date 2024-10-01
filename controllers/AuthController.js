@@ -40,9 +40,7 @@ class AuthController {
       email,
       password: sha1Password,
     });
-
     if (!user) return response.status(401).send({ error: 'Unauthorized' });
-
     const token = uuidv4();
     const key = `auth_${token}`;
     const hoursForExpiration = 24;
