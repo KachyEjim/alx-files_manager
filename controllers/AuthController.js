@@ -1,95 +1,73 @@
 import { v4 as uuidv4 } from 'uuid';
-import { createHash } from 'crypto';
+import sha1 from 'sha1';
 import redisClient from '../utils/redis';
-import dbClient from '../utils/db';
+import userUtils from '../utils/user';
 
-/**
- * Authenticates a user based on the provided credentials in the request headers.
- * Parses the Basic authentication header, validates the
- * credentials, and generates a token for authorized users.
- * If authentication fails, appropriate error responses are sent.
- * Utilizes database and Redis client for user data retrieval and token management.
- *
- * @param {Object} req - The request object containing the user's credentials in the headers.
- * @param {Object} res - The response object used to send responses back to the client.
- * @returns {Object} - Returns a JSON response with a token if
- * authentication is successful, or error responses if authentication fails.
- */
 class AuthController {
   /**
-   * Authenticates a user based on the provided credentials in the request headers.
-   * Parses the Basic authentication header, validates the
-   * credentials, and generates a token for authorized users.
-   * If authentication fails, appropriate error responses are sent.
-   * Utilizes database and Redis client for user data retrieval and token management.
+   * Should sign-in the user by generating a new authentication token
    *
-   * @param {Object} req - The request object containing the user's credentials in the headers.
-   * @param {Object} res - The response object used to send responses back to the client.
-   * @returns {Object} - Returns a JSON response with a token if
-   * authentication is successful, or error responses if authentication fails.
+   * By using the header Authorization and the technique of the Basic auth
+   * (Base64 of the <email>:<password>), find the user associate to this email
+   * and with this password (reminder: we are storing the SHA1 of the password)
+   * If no user has been found, return an error Unauthorized with a status code 401
+   * Otherwise:
+   * Generate a random string (using uuidv4) as token
+   * Create a key: auth_<token>
+   * Use this key for storing in Redis (by using the redisClient create previously)
+   * the user ID for 24 hours
+   * Return this token: { "token": "155342df-2399-41da-9e8c-458b6ac52a0c" }
+   * with a status code 200
    */
-  static async getConnect(req, res) {
-    const authHeaders = req.headers.authorization; // Fixed to get from req.headers
+  static async getConnect(request, response) {
+    const Authorization = request.header('Authorization') || '';
 
-    if (!authHeaders || !authHeaders.startsWith('Basic ')) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
+    const credentials = Authorization.split(' ')[1];
 
-    const base64Crd = authHeaders.split(' ')[1];
-    let userTok;
-    try {
-      userTok = Buffer.from(base64Crd, 'base64').toString('utf-8');
-    } catch (err) {
-      return res.status(400).json({ error: 'Invalid credentials format' });
-    }
+    if (!credentials) { return response.status(401).send({ error: 'Unauthorized' }); }
 
-    const [email, password] = userTok.split(':');
-    const hashedPwd = createHash('sha1').update(password).digest('hex');
+    const decodedCredentials = Buffer.from(credentials, 'base64').toString(
+      'utf-8',
+    );
 
-    try {
-      const user = await dbClient.usersCollection.findOne({ email });
+    const [email, password] = decodedCredentials.split(':');
 
-      if (!user || user.password !== hashedPwd) {
-        return res.status(401).json({ error: 'Unauthorized' });
-      }
+    if (!email || !password) { return response.status(401).send({ error: 'Unauthorized' }); }
 
-      const token = uuidv4();
-      const tokenKey = `auth_${token}`;
-      await redisClient.set(tokenKey, user._id.toString(), 86400); // Ensure the set is awaited
+    const sha1Password = sha1(password);
 
-      return res.status(200).json({ token });
-    } catch (err) {
-      console.error(`Authentication Error: ${err.message}`);
-      return res.status(500).json({ error: 'Internal Server Error' });
-    }
+    const user = await userUtils.getUser({
+      email,
+      password: sha1Password,
+    });
+
+    if (!user) return response.status(401).send({ error: 'Unauthorized' });
+
+    const token = uuidv4();
+    const key = `auth_${token}`;
+    const hoursForExpiration = 24;
+
+    await redisClient.set(key, user._id.toString(), hoursForExpiration * 3600);
+
+    return response.status(200).send({ token });
   }
 
   /**
- * Retrieves the user ID associated with the provided token from Redis.
- * If the token is missing or invalid, returns an 'Unauthorized' error response.
- * Deletes the token from Redis upon successful disconnection.
- *
- * @param {Object} req - The request object containing the token in the headers.
- * @param {Object} res - The response object used to send responses back to the client.
- * @returns {Object} - Returns a JSON response with status 204 if disconnection is successful,
- * or error responses with status 401 if the token is missing or invalid.
- */
-  static async getDisconnect(req, res) {
-    const token = req.headers['x-token'];
+   * Should sign-out the user based on the token
+   *
+   * Retrieve the user based on the token:
+   * If not found, return an error Unauthorized with a status code 401
+   * Otherwise, delete the token in Redis and return nothing with a
+   * status code 204
+   */
+  static async getDisconnect(request, response) {
+    const { userId, key } = await userUtils.getUserIdAndKey(request);
 
-    if (!token) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
+    if (!userId) return response.status(401).send({ error: 'Unauthorized' });
 
-    const tokenKey = `auth_${token}`;
-    const userId = await redisClient.get(tokenKey);
+    await redisClient.del(key);
 
-    if (!userId) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-
-    await redisClient.del(tokenKey);
-    return res.status(204).send();
+    return response.status(204).send();
   }
 }
 

@@ -1,18 +1,12 @@
 import redisClient from '../utils/redis';
 import dbClient from '../utils/db';
 
-/**
- * Class representing the application controller.
- * @class
- */
 class AppController {
-  // GET /status
   /**
- * Retrieves the status of the Redis and database clients.
- *
- * @param {Object} request - The request object.
- * @param {Object} response - The response object.
- */
+   * should return if Redis is alive and if the DB is alive too
+   * by using the 2 utils created previously:
+   * { "redis": true, "db": true } with a status code 200
+   */
   static getStatus(request, response) {
     const status = {
       redis: redisClient.isAlive(),
@@ -21,23 +15,17 @@ class AppController {
     response.status(200).send(status);
   }
 
-  // GET /stats
   /**
-   * Retrieves the statistics of the number of users
-   * and files from the database.
-   *
-   * @param {Object} req - The request object.
-   * @param {Object} res - The response object.
-   * @returns {Object} The number of users and files in the database.
+   * should return the number of users and files in DB:
+   * { "users": 12, "files": 1231 }
+   *  with a status code 200
    */
-  static async getStats(req, res) {
-    const usersCount = await dbClient.nbUsers();
-    const filesCount = await dbClient.nbFiles();
-
-    return res.status(200).send({
-      users: usersCount,
-      files: filesCount,
-    });
+  static async getStats(request, response) {
+    const stats = {
+      users: await dbClient.nbUsers(),
+      files: await dbClient.nbFiles(),
+    };
+    response.status(200).send(stats);
   }
 }
 
